@@ -294,3 +294,69 @@ Ahora se debe configurar los módulos en el [`webpack.config.js`](url-loader/web
 Los archivos de post son `.css`. Para ello debemos configurar para que primero cargue `postcss-loader` y luego ahí utilice `css-loader`. Luego se crea el archivo de configuración de [`postcss.config.js`](prepro/postcss.config.js) y se debe instalar la dependencia de **postcss-nested** que es la que se usará en este archivo de configuración.
 
 - **`npm install --save-dev postcss-nested`**
+
+## Conceptos Avanzados
+
+### Evitar código duplicado
+
+**Code splitting**
+
+Es útil dividir nuestro código en diversos archivos y a veces enteros proyectos, pero no queremos cargar nuestra aplicación de más multiplicando el peso de alguna dependencia al utilizarla en diferentes partes de la aplicación, para eso utilizamos el módulo de optimización con _splitChunks_ en webpack.
+
+**SplitChunksPlugin**
+
+:bulb: _**Cada import es un Chunk**_
+
+- `name: 'commons'` Es el código que se repite en todas las páginas
+- `minSize; 0` Es el tamaño mínimo para poder ingresarlos al commons
+- `chunks` A quien quiero que aplique (con `all` se aplica a todos ellos).
+
+Éstas configuraciones las agregamos al [webpack.config.js](prevent-duplication/webpack.config.js)
+
+_Para más información visitar [SplitChunksPlugin | Webpack](https://webpack.js.org/plugins/split-chunks-plugin/)_
+
+Ahora se debe generar el problemade duplicación.
+
+### Añadiendo un Dynamic Link Library
+
+Mientras más librerías agregamos más lento se empiezan a volver nuestros builds, arruinando así la **Developer Experience**. Por suerte podemos crear una (o varias) Dynamic Link Library para acortar estos tiempos.
+
+Una **Dynamic Link Library (DLL)** es un conjunto de librerías comunes que no cambian frecuentemente por lo que se hace un build por adelantado de las mismas para no re-empaquetar cada vez que hacemos build de nuestra aplicación.
+
+Beneficiando tanto la **Developer Experience** como la **User Experience** ya que el caché del navegador va a mantener una copia que solo va a cambiar cuando nosotros agreguemos o quitemos alguna dependencia, ahorrando así valiosos requests al servidor.
+
+> Con Dynamic Link Library podremos escoger la librerías repetidas para que lo compile sólo una vez.
+
+Esto se hace para configuración de producción
+
+Primero se configura el [webpack.dll.config.js](dll/webpack.dll.config.js) y luego el [webpack.config.js](dll/webpack.config.js), donde en el último se llama al archivo que genera el primero en formato json
+
+```js
+new webpack.DllReferencePlugin({
+  manifest: require("./modules-manifest.json")
+});
+```
+
+## Dynamic imports
+
+Los módulos se cargan de manera dinámica y se carga sólo cuando el usuario lo requiera.
+
+Para soportar los dynamic imports, debemos agregarle otro plugin a babel.
+
+- **`npm install --save-dev @babel/plugin-syntax-dynamic-import`**
+
+Instalamos la dependencia de desarrollo y la agregamos a la configuración de babel en [.babelrc](dynamic-imports/.babelrc)
+
+Las configuración se realiza en (webpack.config.js)[dynamic-imports/webpack.config.js]
+
+```js
+publicPath: 'dist/',
+chunkFilename: 'js/[id].[chunkhash].js'
+```
+
+Y en el archivo [`package.json`](package.json) se crean las tareas:
+
+```js
+"build:dynamic:dll": "webpack --config ./dynamic-imports/webpack.dll.config.js",
+"build:dynamic": "webpack --config ./dynamic-imports/webpack.config.js"
+```
